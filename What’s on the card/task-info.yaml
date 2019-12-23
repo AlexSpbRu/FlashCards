@@ -1,0 +1,405 @@
+type: edu
+custom_name: What’s on the card?
+files:
+- name: test/FlashcardsTest.java
+  visible: false
+  text: |
+    import common.FlashcardsStage2Test;
+
+    public class FlashcardsTest extends FlashcardsStage2Test {
+        // just empty class, but not abstract so it can be run
+    }
+  learner_created: false
+- name: test/common/FlashcardsStage2Test.kt
+  visible: false
+  text: |+
+    package common
+
+    import flashcards.Main
+
+    import org.hyperskill.hstest.v6.stage.BaseStageTest
+    import org.hyperskill.hstest.v6.testcase.CheckResult
+    import org.hyperskill.hstest.v6.testcase.TestCase
+    import common.FlashcardsStage2Answer.RIGHT
+    import common.FlashcardsStage2Answer.WRONG
+
+    data class FlashcardsStage2Clue(
+            val consoleInput: String,
+            val answer: FlashcardsStage2Answer,
+            val revealTest: Boolean = false
+    )
+
+    enum class FlashcardsStage2Answer(val word: String) {
+        RIGHT("right"),
+        WRONG("wrong");
+    }
+
+    abstract class FlashcardsStage2Test : BaseStageTest<FlashcardsStage2Clue>(Main::class.java) {
+
+        override fun generate(): List<TestCase<FlashcardsStage2Clue>> {
+            return listOf(
+                    createTestCase("a purring animal\ncat\ncat\n", RIGHT, true),
+                    createTestCase("a purring animal\ncat\n????\n", WRONG, true),
+                    createTestCase("a barking animal\ndog\ncat\n", WRONG),
+                    createTestCase("a barking animal\ndog\ndog\n", RIGHT)
+            )
+        }
+
+        override fun check(reply: String, clue: FlashcardsStage2Clue): CheckResult {
+            val words = reply.lowerWords()
+
+            val hasRight = RIGHT.word.toLowerCase() in words
+            val hasWrong = WRONG.word.toLowerCase() in words
+
+            if ((hasRight || !hasWrong) && clue.answer == WRONG) {
+                return if (clue.revealTest) {
+                    CheckResult(
+                            false,
+                            revealRawTest(clue.consoleInput, reply) + "Expected the \"${WRONG.word}\" word."
+                    )
+                } else {
+                    CheckResult(false)
+                }
+            }
+
+            if ((hasWrong || !hasRight) && clue.answer == RIGHT) {
+                return if (clue.revealTest) {
+                    CheckResult(
+                            false,
+                            revealRawTest(clue.consoleInput, reply) + "Expected the \"${RIGHT.word}\" word."
+                    )
+                } else {
+                    CheckResult(false)
+                }
+            }
+
+            return CheckResult(true)
+        }
+
+        companion object {
+            private fun createTestCase(
+                    consoleInput: String,
+                    answer: FlashcardsStage2Answer,
+                    revealTest: Boolean = false
+            ): TestCase<FlashcardsStage2Clue> {
+                return TestCase<FlashcardsStage2Clue>()
+                        .setInput(consoleInput)
+                        .setAttach(FlashcardsStage2Clue(consoleInput, answer, revealTest))
+            }
+        }
+    }
+
+    fun revealRawTest(consoleInput: String, reply: String): String {
+        return "Input:\n$consoleInput\nYour output:\n$reply\n\n"
+    }
+
+    fun String.lowerWords(): Set<String> {
+        val lowerReply = this.trim().toLowerCase()
+
+        val onlyLetters = lowerReply.map { if (it.isLetter()) it else ' ' }.joinToString("")
+
+        return onlyLetters.split(" ").filter { it.isNotEmpty() }.toSet()
+    }
+
+
+  learner_created: false
+- name: src/flashcards/Main.java
+  visible: true
+  text: |
+    package flashcards;
+
+    import java.util.*;
+
+    import java.io.IOException;
+    import java.io.File;
+    import java.nio.file.Files;
+    import java.nio.file.Paths;
+
+    import java.io.PrintWriter;
+
+
+    class FlashCards {
+        protected Map<String, String>      cardToDefinition = new LinkedHashMap<>();
+        protected Map<String, String>      definitionToCard = new LinkedHashMap<>();
+        protected int             cardsCount = 0;
+
+        protected Map<String, Integer>      actions = new HashMap<>();
+        //protected String  workDirectory = "d:\\Alex\\Java\\Tests\\";
+
+        // File file = new File("d:\\Alex\\Java\\Tests\\basedir");
+        //
+        public FlashCards(  ) {
+            actions.put("add",1);
+            actions.put("remove",2);
+            actions.put("import",3);
+            actions.put("export",4);
+            actions.put("ask",5);
+            actions.put("exit",6);
+        }
+
+
+        public void AddCard_Stage4(Scanner scan, int num ) {
+            String card = new String();
+            String defenition = new String();
+
+            System.out.print("The card #" + num + ":\n> ");
+            while( true ) {
+                 card = scan.nextLine();
+                 if (cardToDefinition.containsKey(card)) {
+                     System.out.print("The card \"" + card + "\" already exists. Try again:\n> ");
+                 } else {
+                     break;
+                 }
+             }
+
+            System.out.print("The definition of the card #" + num + ":\n> ");
+            while( true ) {
+                defenition = scan.nextLine();
+                if (definitionToCard.containsKey(defenition)) {
+                    System.out.print("The definition \"" + defenition + "\" already exists. Try again:\n> ");
+                } else {
+                    break;
+                }
+            }
+
+            cardToDefinition.put(card, defenition);
+            definitionToCard.put(defenition, card);
+        }
+
+        public void CheckAllCards_Stage4( Scanner scan ) {
+            for (Map.Entry<String, String> entry : cardToDefinition.entrySet()) {
+                CheckCard_Stage4(entry.getKey(), entry.getValue(), scan );
+            }
+        }
+
+        public void CheckCard_Stage4(String  card, String  defenition, Scanner scan ) {
+            System.out.print("Print the definition of \"" +  card + "\":\n> " );
+            String def = "";
+            if( scan.hasNext())
+                def = scan.nextLine();
+
+            if( defenition.equalsIgnoreCase(def) ) {
+                System.out.println("Correct answer.");
+            } else {
+                //System.out.printf("Wrong answer. The correct one is \"" + defenition + "\"," );
+                if(definitionToCard.containsKey(def) ) {
+                    System.out.printf("Wrong answer. The correct one is \"" + defenition + "\", you've just written the definition of \"" + definitionToCard.get(def) + "\".\n" );
+                } else {
+                    System.out.printf("Wrong answer. The correct one is \"" + defenition + "\".\n" );
+                }
+            }
+        }
+
+        public void ProcessFleshCards_Stage4( Scanner scan ) {
+            System.out.print("Input the number of cards:\n> ");
+            int cardCount = scan.nextInt();
+            if( scan.hasNextLine())
+                scan.nextLine();
+            for( int i = 1 ; i <= cardCount; ++i ) {
+                AddCard_Stage4( scan, i );
+            }
+
+            CheckAllCards_Stage4(scan);
+
+        }
+
+        public  void Import(Scanner scan )  {
+            System.out.print("File name:\n> ");
+
+            String fileName = scan.nextLine();
+            File file = new File(fileName);
+            int numCard = 0;
+            if( !file.exists() ) {
+                System.out.println("0 cards have been loaded. File not found.");
+                return;
+            }
+            try {
+                String[] strNums = Files.readAllLines(Paths.get(fileName)).toArray(new String[0] );
+
+                for( int  i= 0 ; i < strNums.length ; i += 2  ) {
+                    if( i+1 < strNums.length ) {
+                        if( !cardToDefinition.containsKey(strNums[i]) ) {
+                            cardToDefinition.put(strNums[i], strNums[i + 1]);
+                            definitionToCard.put(strNums[i + 1], strNums[i]);
+                        } else {
+                            String def = cardToDefinition.get(strNums[i]);
+                            if( def.startsWith("UpdateMeFromImport") ) {
+                                definitionToCard.remove(def);
+                                definitionToCard.put(strNums[i + 1], strNums[i]);
+                                cardToDefinition.replace(strNums[i], strNums[i + 1]);
+                            }
+                        }
+                        numCard++;
+                    }
+                }
+            }
+            catch (IOException e) {
+                System.out.println("Cannot read file: " + e.getMessage());
+            }
+            System.out.println(numCard + " cards have been loaded.");
+        }
+
+        public  void Export(Scanner scan )  {
+            System.out.print("File name:\n> ");
+
+            String fileName = scan.nextLine();
+
+            File file = new File(fileName);
+            try {   // overwrites the file
+                if( !file.exists())
+                    file.createNewFile();
+                PrintWriter writer = new PrintWriter(file);
+                for( Map.Entry<String, String> card : cardToDefinition.entrySet() ) {
+                    writer.println(card.getKey());
+                    writer.println(card.getValue());
+                }
+                writer.flush();
+                writer.close();
+            } catch (IOException e) {
+                System.out.printf("An exception occurs %s", e.getMessage());
+            }
+
+            System.out.println(cardToDefinition.size() + " cards have been saved.");
+        }
+
+        //public FlashCards( int count ) {
+        //    cardsCount = count;
+        //}
+
+        public void SetCardsCount( int count ) {
+            cardsCount = count;
+        }
+
+        public void AddCard(Scanner scan ) {
+
+            System.out.print("The card:\n> ");
+
+            String card = scan.nextLine();
+            if(cardToDefinition.containsKey(card)) {
+                System.out.println("The card \"" + card + "\" already exists.");
+                return;
+            }
+
+            System.out.print("The definition of the card:\n> ");
+            String  defenition = scan.nextLine();
+            if(definitionToCard.containsKey(defenition)) {
+                System.out.println("The definition \"" + defenition + "\" already exists.");
+                return;
+            }
+
+            cardToDefinition.put(card, defenition);
+            definitionToCard.put(defenition, card);
+            System.out.println("The pair (\"" + card +"\":\"" +defenition + "\") has been added.");
+
+        }
+
+
+
+        public void CheckCard(String  card, String  defenition, Scanner scan ) {
+            System.out.print("Print the definition of \"" +  card + "\":\n> " );
+            String def = "";
+            if( scan.hasNext())
+                def = scan.nextLine();
+
+            if( defenition.equalsIgnoreCase(def) ) {
+                System.out.println("Correct answer.");
+            } else {
+                //System.out.printf("Wrong answer. The correct one is \"" + defenition + "\"," );
+                if(definitionToCard.containsKey(def) ) {
+                    System.out.printf("Wrong answer. The correct one is \"" + defenition + "\", you've just written the definition of \"" + definitionToCard.get(def) + "\".\n" );
+                } else {
+                    System.out.printf("Wrong answer. The correct one is \"" + defenition + "\".\n" );
+                }
+            }
+        }
+
+        public void Remove(Scanner scan ) {
+            System.out.print("The card:\n> ");
+
+            String card = scan.nextLine();
+            if(cardToDefinition.containsKey(card)) {
+                String def = cardToDefinition.get(card);
+                cardToDefinition.remove(card);
+                definitionToCard.remove(def);
+                System.out.println("The card has been removed.");
+            } else {
+                System.out.println("Can't remove \"" + card + "\": there is no such card.");
+            }
+
+        }
+
+        public void Ask(Scanner scan ) {
+            System.out.print("How many times to ask?\n> ");
+            int num = scan.nextInt();
+            if( scan.hasNextLine() )
+                scan.nextLine();
+
+            Set<Map.Entry<String, String>> set = cardToDefinition.entrySet();
+            int sz = set.size();
+            Random rand = new Random();
+            for( int i = 0 ; i < num ; ++i ) {
+                int pos = rand.nextInt(sz);
+                int j = 0;
+                for (Map.Entry<String, String> entry : set ) {
+                    if( j == pos ) {
+                        CheckCard(entry.getKey(), entry.getValue(), scan);
+                        break;
+                    }
+                    j++;
+                }
+            }
+        }
+
+        public void ProcessFleshCards( Scanner scan ) {
+            boolean stop = false;
+            while( !stop ) {
+                System.out.println("Input the action (add, remove, import, export, ask, exit):");
+                System.out.print("> ");
+                String command = scan.nextLine();
+                if(actions.containsKey(command)) {
+                    switch ( actions.get(command) ) {
+                        case 1 :        //  add
+                            AddCard( scan );
+                            break;
+                        case 2 :        //  remove
+                            Remove(scan);
+                            break;
+                        case 3 :        //   import
+                            Import(scan);
+                            break;
+                        case 4 :        //   export
+                            Export(scan);
+                            break;
+                        case 5 :        //   ask
+                            Ask(scan);
+                            break;
+                        case 6 :        //   exit
+                            stop = true;
+                            break;
+                    }
+                }
+            }
+            System.out.println("Bye bye!");
+        }
+    }
+
+
+    public class Main {
+        // protected final static Scanner scan = new Scanner(System.in).useDelimiter("\n");
+
+        static FlashCards flashCards = new FlashCards();
+
+        public static void outputCard( String card, String defenition ) {
+            System.out.printf("Card:\n%s \nDefinition:\n%s\n", card, defenition);
+        }
+
+
+        public static void main(String[] args) {
+            Scanner scan = new Scanner(System.in);
+            flashCards.ProcessFleshCards(scan);
+        }
+    }
+  learner_created: false
+feedback_link: https://hyperskill.org/projects/44/stages/233/implement
+status: Failed
+record: 2
